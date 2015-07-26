@@ -6,4 +6,6 @@
 <bind tag="submitText">Login</bind>
 <apply template="userform"/>
 
+<!-- Not allowing new user
 <p>Don't have a login yet? <a href="/new_user">Create a new user</a></p>
+-->

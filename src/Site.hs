@@ -19,6 +19,7 @@ import           Snap.Snaplet.Auth
 import           Snap.Snaplet.Auth.Backends.JsonFile
 import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Session.Backends.CookieSession
+import           Snap.Snaplet.RedisDB
 import           Snap.Util.FileServe
 import           Heist
 import qualified Heist.Interpreted as I
@@ -53,19 +54,19 @@ handleLogout = logout >> redirect "/"
 
 ------------------------------------------------------------------------------
 -- | Handle new user form submit
-handleNewUser :: Handler App (AuthManager App) ()
-handleNewUser = method GET handleForm <|> method POST handleFormSubmit
-  where
-    handleForm = render "new_user"
-    handleFormSubmit = registerUser "login" "password" >> redirect "/"
-
+--handleNewUser :: Handler App (AuthManager App) ()
+--handleNewUser = method GET handleForm <|> method POST handleFormSubmit
+--  where
+--    handleForm = render "new_user"
+--    handleFormSubmit = registerUser "login" "password" >> redirect "/"
+g
 
 ------------------------------------------------------------------------------
 -- | The application's routes.
 routes :: [(ByteString, Handler App App ())]
 routes = [ ("/login",    with auth handleLoginSubmit)
          , ("/logout",   with auth handleLogout)
-         , ("/new_user", with auth handleNewUser)
+--         , ("/new_user", with auth handleNewUser)
          , ("",          serveDirectory "static")
          ]
 
@@ -83,7 +84,10 @@ app = makeSnaplet "app" "An snaplet example application." Nothing $ do
     -- you'll probably want to change this to a more robust auth backend.
     a <- nestSnaplet "auth" auth $
            initJsonFileAuthManager defAuthSettings sess "users.json"
+
+    redisdb <- nestSnaplet "redis" redis redisDBInitConf
+
     addRoutes routes
     addAuthSplices h auth
-    return $ App h s a
+    return $ App h s a redisdb
 
