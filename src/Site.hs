@@ -59,7 +59,7 @@ handleLogout = logout >> redirect "/"
 --  where
 --    handleForm = render "new_user"
 --    handleFormSubmit = registerUser "login" "password" >> redirect "/"
-g
+
 
 ------------------------------------------------------------------------------
 -- | The application's routes.
