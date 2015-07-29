@@ -11,8 +11,11 @@ module Site
 ------------------------------------------------------------------------------
 import           Control.Applicative
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BS
 import           Data.Monoid
+import           Data.Maybe
 import qualified Data.Text as T
+import           Database.Redis hiding (String, auth)
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Auth
@@ -26,15 +29,13 @@ import qualified Heist.Interpreted as I
 ------------------------------------------------------------------------------
 import           Application
 
-
 ------------------------------------------------------------------------------
 -- | Render login form
 handleLogin :: Maybe T.Text -> Handler App (AuthManager App) ()
 handleLogin authError = heistLocal (I.bindSplices errs) $ render "login"
-  where
-    errs = maybe mempty splice authError
-    splice err = "loginError" ## I.textSplice err
-
+    where
+        errs = maybe mempty splice authError
+        splice err = "loginError" ## I.textSplice err
 
 ------------------------------------------------------------------------------
 -- | Handle login submit
@@ -42,24 +43,57 @@ handleLoginSubmit :: Handler App (AuthManager App) ()
 handleLoginSubmit =
     loginUser "login" "password" Nothing
               (\_ -> handleLogin err) (redirect "/")
-  where
-    err = Just "Unknown user or password"
-
+   where
+        err = Just "Unknown user or password"
 
 ------------------------------------------------------------------------------
 -- | Logs out and redirects the user to the site index.
 handleLogout :: Handler App (AuthManager App) ()
 handleLogout = logout >> redirect "/"
 
-
 ------------------------------------------------------------------------------
 -- | Handle new user form submit
 --handleNewUser :: Handler App (AuthManager App) ()
 --handleNewUser = method GET handleForm <|> method POST handleFormSubmit
---  where
---    handleForm = render "new_user"
---    handleFormSubmit = registerUser "login" "password" >> redirect "/"
+--    where
+--        handleForm = render "new_user"
+--        handleFormSubmit = registerUser "login" "password" >> redirect "/"
 
+------------------------------------------------------------------------------
+-- | Handle redis add data
+handleAddData :: Handler App App ()
+handleAddData = method GET handleForm <|> method POST handleFormSubmit
+    where
+        handleForm = render "add_data"
+        handleFormSubmit = do
+            runRedisDB redis $ set "key" "value"
+            redirect "/"
+
+------------------------------------------------------------------------------
+-- | Handle redis show data
+handleShowData :: Handler App App ()
+handleShowData = method GET handleFormSubmit
+    where
+        -- Assuming if there's key, there's value, whatever it is.
+        right = either undefined id
+        handleFormSubmit = do
+            (allkeys, alldata) <- runRedisDB redis $ do
+                allkeys <- keys "*"
+                alldata <- mget $ right allkeys
+                return (right allkeys, map (fromMaybe "NULL") $ right alldata)
+            writeBS $ BS.append ("Data I have:\n" :: ByteString) $ BS.pack $ show $ zip allkeys alldata
+
+------------------------------------------------------------------------------
+-- | Handle when not logged in
+handleNotLoggedIn :: Handler App App ()
+handleNotLoggedIn = writeBS "No User"
+
+------------------------------------------------------------------------------
+-- | Helper function
+require :: SnapletLens App (AuthManager App)
+           -> Handler App App ()
+           -> Handler App App ()
+require authe = requireUser authe handleNotLoggedIn
 
 ------------------------------------------------------------------------------
 -- | The application's routes.
@@ -67,9 +101,10 @@ routes :: [(ByteString, Handler App App ())]
 routes = [ ("/login",    with auth handleLoginSubmit)
          , ("/logout",   with auth handleLogout)
 --         , ("/new_user", with auth handleNewUser)
+         , ("/add_data", require auth handleAddData)
+         , ("/show_data", require auth handleShowData)
          , ("",          serveDirectory "static")
          ]
-
 
 ------------------------------------------------------------------------------
 -- | The application initializer.

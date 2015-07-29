@@ -36,6 +36,7 @@ Executable firstsnap
         xmlhtml,
         base,
         lens,
+        hedis,
         snaplet-redis
 
     if flag(development)

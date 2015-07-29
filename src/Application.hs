@@ -26,7 +26,6 @@ makeLenses ''App
 instance HasHeist App where
     heistLens = subSnaplet heist
 
-
 ------------------------------------------------------------------------------
 type AppHandler = Handler App App
 
