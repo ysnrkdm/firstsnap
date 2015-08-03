@@ -8,7 +8,7 @@
     </p>
 
     <p>Congrats!  You're logged in as '<loggedInUser/>'</p>
-
+    <p><a href="/show_data">Show Data</a></p>
     <p><a href="/logout">Logout</a></p>
   </ifLoggedIn>
 

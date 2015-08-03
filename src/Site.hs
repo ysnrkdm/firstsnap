@@ -15,14 +15,14 @@ import qualified Data.ByteString.Char8 as BS
 import           Data.Monoid
 import           Data.Maybe
 import qualified Data.Text as T
-import           Database.Redis hiding (String, auth)
+import qualified Database.Redis as R
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Auth
 import           Snap.Snaplet.Auth.Backends.JsonFile
 import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Session.Backends.CookieSession
-import           Snap.Snaplet.RedisDB
+import           RedisDB
 import           Snap.Util.FileServe
 import           Heist
 import qualified Heist.Interpreted as I
@@ -65,8 +65,11 @@ handleAddData :: Handler App App ()
 handleAddData = method GET handleForm <|> method POST handleFormSubmit
     where
         handleForm = render "add_data"
+        setDataWith key value = runRedisDB redis $ R.set (fromJust key) (fromJust value)
         handleFormSubmit = do
-            runRedisDB redis $ set "key" "value"
+            key <- getPostParam "key"
+            value <- getPostParam "value"
+            setDataWith key value
             redirect "/"
 
 ------------------------------------------------------------------------------
@@ -78,8 +81,8 @@ handleShowData = method GET handleFormSubmit
         right = either undefined id
         handleFormSubmit = do
             (allkeys, alldata) <- runRedisDB redis $ do
-                allkeys <- keys "*"
-                alldata <- mget $ right allkeys
+                allkeys <- R.keys "*"
+                alldata <- R.mget $ right allkeys
                 return (right allkeys, map (fromMaybe "NULL") $ right alldata)
             writeBS $ BS.append ("Data I have:\n" :: ByteString) $ BS.pack $ show $ zip allkeys alldata
 
@@ -105,6 +108,16 @@ routes = [ ("/login",    with auth handleLoginSubmit)
          , ("/show_data", require auth handleShowData)
          , ("",          serveDirectory "static")
          ]
+
+--defaultConnectInfo =
+--    R.defaultConnectInfo
+--        { connectHost           = "localhost"
+--        , connectPort           = R.PortNumber 6379
+--        , connectAuth           = Nothing
+--        , connectDatabase       = 0
+--        , connectMaxConnections = 50
+--        , connectMaxIdleTime    = 30
+--        }
 
 ------------------------------------------------------------------------------
 -- | The application initializer.

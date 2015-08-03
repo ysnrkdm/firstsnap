@@ -23,6 +23,9 @@ Executable firstsnap
     main-is: Main.hs
 
     Build-depends:
+        configurator,
+        transformers,
+        network,
         bytestring,
         heist,
         MonadCatchIO-transformers,
@@ -36,8 +39,7 @@ Executable firstsnap
         xmlhtml,
         base,
         lens,
-        hedis,
-        snaplet-redis
+        hedis
 
     if flag(development)
         build-depends:
